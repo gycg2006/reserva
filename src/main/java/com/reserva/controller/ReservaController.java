@@ -2,6 +2,7 @@ package com.reserva.controller;
 
 import com.reserva.dto.ReservaRequest;
 import com.reserva.dto.ReservaResponse;
+import com.reserva.dto.StatusUpdateRequest;
 import com.reserva.model.Reserva;
 import com.reserva.service.ReservaService;
 import jakarta.validation.Valid;
@@ -29,6 +30,15 @@ public class ReservaController {
     @GetMapping("/{id}")
     public ResponseEntity<ReservaResponse> buscarReserva(@PathVariable Long id) {
         Reserva reserva = reservaService.buscarPorId(id);
+        ReservaResponse response = mapToResponse(reserva);
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<ReservaResponse> atualizarStatus(
+            @PathVariable Long id,
+            @RequestBody @Valid StatusUpdateRequest statusRequest) {
+        Reserva reserva = reservaService.atualizarStatus(id, statusRequest.getStatus());
         ReservaResponse response = mapToResponse(reserva);
         return ResponseEntity.ok(response);
     }

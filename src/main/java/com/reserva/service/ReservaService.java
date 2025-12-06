@@ -68,4 +68,11 @@ public class ReservaService {
         return reservaRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Reserva não encontrada com id: " + id));
     }
+
+    @Transactional
+    public Reserva atualizarStatus(Long id, ReservaStatus novoStatus) {
+        Reserva reserva = buscarPorId(id);
+        reserva.setStatus(novoStatus);
+        return reservaRepository.save(reserva);
+    }
 }

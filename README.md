@@ -120,7 +120,7 @@ environment:
   POSTGRES_USER: admin          
   POSTGRES_PASSWORD: 123456     
 ports:
-  - "5432:5432"                # Porta do PostgreSQL
+  - "5432:5432"           
 ```
 
 **Importante:** Se alterar as credenciais no Docker, atualize também o `application.properties`.

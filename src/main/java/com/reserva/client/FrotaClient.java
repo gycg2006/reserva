@@ -1,14 +1,15 @@
 package com.reserva.client;
 
-import lombok.Data;
+import java.math.BigDecimal;
+import java.util.List;
+
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
-import java.math.BigDecimal;
-import java.util.List;
+import lombok.Data;
 
-@FeignClient(name = "frota-service", url = "${frota.service.url:https://seu-servico.onrender.com}")
+@FeignClient(name = "frota-service", url = "${frota.service.url:https://ms-veiculos.onrender.com}")
 public interface FrotaClient {
 
     @GetMapping("/api/veiculos")

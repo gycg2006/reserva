@@ -20,7 +20,7 @@ Microsserviço desenvolvido em Spring Boot para gerenciamento de reservas de ve�
 - **Maven 3.6+**
 - **Docker** e **Docker Compose** (opcional, mas recomendado)
 - **PostgreSQL 12+** (ou use Docker)
-- **Serviço de Frota** rodando na porta 8081 (para verificação de disponibilidade)
+- **Serviço de Frota** configurado via variável de ambiente `FROTA_SERVICE_URL` (para verificação de disponibilidade)
 
 ---
 
@@ -151,13 +151,29 @@ spring.datasource.password=123456
 
 ### 2. Serviço de Frota
 
-O microsserviço depende do serviço de frota rodando em `http://localhost:8081` com o endpoint:
+O microsserviço depende do serviço de frota configurado através da variável de ambiente `FROTA_SERVICE_URL` (padrão: `https://seu-servico.onrender.com`). O serviço utiliza os seguintes endpoints:
 
 ```
-GET /carros/disponibilidade?categoriaId={id}&inicio={dataInicio}&fim={dataFim}
+GET /api/veiculos
 ```
 
-Este endpoint deve retornar um `boolean` indicando se há carros disponíveis.
+Este endpoint deve retornar uma lista de veículos (`List<VeiculoResponse>`) com as seguintes propriedades:
+- `id` (Long)
+- `modelo` (String)
+- `marca` (String)
+- `ano` (Integer)
+- `placa` (String)
+- `preco` (BigDecimal)
+- `status` (String)
+
+O serviço de reserva verifica se existe pelo menos um veículo com `status` igual a "disponível" (case-insensitive) para permitir a criação da reserva.
+
+Também está disponível o endpoint:
+```
+GET /api/veiculos/{id}
+```
+
+Para consultar um veículo específico por ID.
 
 ## Executando o Projeto
 
@@ -486,7 +502,7 @@ Content-Type: application/json
 Não há carros disponíveis para esta categoria nestas datas.
 ```
 
-**Observação:** Este erro ocorre quando o serviço de frota retorna `false` para a disponibilidade.
+**Observação:** Este erro ocorre quando o serviço de frota não retorna nenhum veículo com status "disponível" na lista de veículos.
 
 **cURL:**
 ```bash
@@ -537,9 +553,9 @@ curl -X POST http://localhost:8080/reservas \
 ```
 
 **Para testar este cenário:**
-1. Pare o serviço de frota na porta 8081
+1. Configure uma URL inválida para `FROTA_SERVICE_URL` ou pare o serviço de frota
 2. Execute a requisição acima
-3. Reinicie o serviço de frota
+3. Restaure a configuração correta do serviço de frota
 
 ---
 
@@ -651,36 +667,19 @@ reserva/
 Crie variáveis de ambiente no Postman:
 
 - `base_url`: `http://localhost:8080`
-- `reserva_id`: `1` (atualizar após criar uma reserva)
+- `reserva_id`: `1`
 
 ---
-
-## Testando com HTTPie
-
-### Instalação
-
-```bash
-# Windows (via pip)
-pip install httpie
-
-# macOS
-brew install httpie
-
-# Linux
-sudo apt-get install httpie
-```
 
 ### Exemplos
 
 ```bash
-# Criar reserva
 http POST localhost:8080/reservas \
   clienteId:=1 \
   categoriaCarroId:=2 \
   dataInicio:="2024-12-20T10:00:00" \
   dataFim:="2024-12-25T10:00:00"
 
-# Buscar reserva
 http GET localhost:8080/reservas/1
 ```
 
@@ -720,12 +719,12 @@ Use este checklist para garantir que todas as funcionalidades foram testadas:
 
 ### Erro: "Connection refused" ao criar reserva
 
-**Causa:** Serviço de frota não está rodando na porta 8081.
+**Causa:** Serviço de frota não está acessível ou a URL configurada em `FROTA_SERVICE_URL` está incorreta.
 
 **Solução:** 
-1. Verifique se o serviço de frota está rodando
-2. Confirme que está na porta 8081
-3. Teste o endpoint manualmente: `http://localhost:8081/carros/disponibilidade?categoriaId=1&inicio=2024-12-20T10:00:00&fim=2024-12-25T10:00:00`
+1. Verifique se o serviço de frota está rodando e acessível
+2. Confirme que a variável de ambiente `FROTA_SERVICE_URL` está configurada corretamente
+3. Teste o endpoint `GET /api/veiculos` manualmente para verificar se está respondendo
 
 ### Erro: "Failed to obtain JDBC Connection"
 
@@ -753,7 +752,7 @@ Use este checklist para garantir que todas as funcionalidades foram testadas:
 2. Ou altere a porta no `docker-compose.yml`:
    ```yaml
    ports:
-     - "5433:5432"  # Use 5433 no host
+     - "5433:5432" 
    ```
 3. Atualize o `application.properties`:
    ```properties

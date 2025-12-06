@@ -52,7 +52,7 @@ public class ReservaService {
         novaReserva.setStatus(ReservaStatus.PENDENTE);
 
         long dias = ChronoUnit.DAYS.between(dados.getDataInicio(), dados.getDataFim());
-        if (dias == 0) dias = 1; // Mínimo 1 diária
+        if (dias == 0) dias = 1; 
         novaReserva.setValorTotalEstimado(dias * 100.00);
 
         return reservaRepository.save(novaReserva);

@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: reserva-postgres
+    environment:
+      POSTGRES_DB: reserva_db
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: 123456
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d reserva_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - reserva-network
+    restart: unless-stopped
+
+  reserva-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: reserva-service
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/reserva_db
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: 123456
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - reserva-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  reserva-network:
+    driver: bridge
+

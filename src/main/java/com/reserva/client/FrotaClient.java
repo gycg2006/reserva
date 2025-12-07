@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 import lombok.Data;
 
-@FeignClient(name = "frota-service", url = "${frota.service.url:https://ms-veiculos.onrender.com/api/veiculos/}")
+@FeignClient(name = "frota-service", url = "${frota.service.url:https://ms-veiculos.onrender.com}")
 public interface FrotaClient {
 
     @GetMapping("/api/veiculos")

@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.*;
            allowedHeaders = "*", 
            methods = {RequestMethod.GET, RequestMethod.POST, 
                       RequestMethod.PUT, RequestMethod.DELETE, 
-                      RequestMethod.OPTIONS})
+                      RequestMethod.PATCH, RequestMethod.OPTIONS})
 public class ReservaController {
 
     private final ReservaService reservaService;

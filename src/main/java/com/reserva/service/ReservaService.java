@@ -39,7 +39,7 @@ public class ReservaService {
             throw new IllegalStateException("Erro ao comunicar com o serviço de frota.", e);
         }
 
-        if (!"disponível".equalsIgnoreCase(veiculo.getStatus())) {
+        if (!"DISPONIVEL".equalsIgnoreCase(veiculo.getStatus())) {
             throw new IllegalArgumentException("O veículo solicitado não está disponível no momento (Status: " + veiculo.getStatus() + ").");
         }
 

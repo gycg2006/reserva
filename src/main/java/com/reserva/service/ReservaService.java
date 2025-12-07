@@ -87,15 +87,18 @@ public class ReservaService {
         Reserva reserva = buscarPorId(id);
         
         if ((novoStatus == ReservaStatus.CANCELADA || novoStatus == ReservaStatus.CONCLUIDA) 
-                && reserva.getStatus() != ReservaStatus.CANCELADA) {
+        && reserva.getStatus() != ReservaStatus.CANCELADA) {
             try {
                 VeiculoDto veiculo = frotaClient.consultarVeiculo(reserva.getCategoriaCarroId());
-                veiculo.setStatus("disponível");
+                
+                // PONTO CRÍTICO: Garanta que esta string é EXATAMENTE igual à que permite reservar
+                veiculo.setStatus("DISPONIVEL"); 
+                
                 frotaClient.atualizarVeiculo(veiculo.getId(), veiculo);
             } catch (Exception e) {
-                System.err.println("Erro ao liberar veículo no serviço de frota: " + e.getMessage());
-            }
+                throw new IllegalStateException("Falha ao liberar o veículo no cancelamento: " + e.getMessage());
         }
+    }
 
         reserva.setStatus(novoStatus);
         return reservaRepository.save(reserva);

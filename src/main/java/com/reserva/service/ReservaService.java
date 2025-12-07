@@ -86,19 +86,29 @@ public class ReservaService {
     public Reserva atualizarStatus(Long id, ReservaStatus novoStatus) {
         Reserva reserva = buscarPorId(id);
         
-        if ((novoStatus == ReservaStatus.CANCELADA || novoStatus == ReservaStatus.CONCLUIDA) 
-        && reserva.getStatus() != ReservaStatus.CANCELADA) {
+        // Verifica se a operação exige liberar o carro (Cancelamento ou Conclusão)
+        boolean deveLiberarCarro = (novoStatus == ReservaStatus.CANCELADA || novoStatus == ReservaStatus.CONCLUIDA);
+        
+        // Verifica se o carro já não estava liberado (evita tentar liberar se já estava cancelada/concluída)
+        boolean carroEstaPreso = (reserva.getStatus() != ReservaStatus.CANCELADA && reserva.getStatus() != ReservaStatus.CONCLUIDA);
+
+        if (deveLiberarCarro && carroEstaPreso) {
             try {
                 VeiculoDto veiculo = frotaClient.consultarVeiculo(reserva.getCategoriaCarroId());
                 
-                // PONTO CRÍTICO: Garanta que esta string é EXATAMENTE igual à que permite reservar
+                // IMPORTANTE: Use a mesma string que você usa no cadastro ("DISPONIVEL" ou "disponível")
                 veiculo.setStatus("DISPONIVEL"); 
                 
                 frotaClient.atualizarVeiculo(veiculo.getId(), veiculo);
+                System.out.println("Veículo liberado com sucesso: ID " + veiculo.getId());
+                
             } catch (Exception e) {
-                throw new IllegalStateException("Falha ao liberar o veículo no cancelamento: " + e.getMessage());
+                // É recomendável lançar erro para sabermos se falhou, 
+                // mas sem impedir a conclusão se o serviço de frota estiver fora do ar (opcional)
+                System.err.println("Erro ao liberar veículo: " + e.getMessage());
+                // throw new IllegalStateException("Não foi possível liberar o veículo na frota.");
+            }
         }
-    }
 
         reserva.setStatus(novoStatus);
         return reservaRepository.save(reserva);

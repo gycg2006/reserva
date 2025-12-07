@@ -14,4 +14,15 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long> {
     List<Reserva> findByStatusAndDataInicioBefore(ReservaStatus status, LocalDateTime dataLimite);
 
     List<Reserva> findByClienteId(String clienteId);
+
+    @Query("SELECT r FROM Reserva r " +
+           "WHERE r.categoriaCarroId = :carroId " +
+           "AND r.status NOT IN (:statusIgnorados) " +
+           "AND (r.dataInicio < :dataFim AND r.dataFim > :dataInicio)")
+    List<Reserva> findConflitosDeReserva(
+            @Param("carroId") Long carroId,
+            @Param("dataInicio") LocalDateTime dataInicio,
+            @Param("dataFim") LocalDateTime dataFim,
+            @Param("statusIgnorados") List<ReservaStatus> statusIgnorados
+    );
 }

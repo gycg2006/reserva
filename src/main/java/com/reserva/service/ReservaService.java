@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 @Service
 public class ReservaService {
@@ -30,6 +31,20 @@ public class ReservaService {
 
         validarDatas(dados.getDataInicio(), dados.getDataFim());
 
+        // 1. Check for conflicting dates
+        List<ReservaStatus> statusIgnorados = List.of(ReservaStatus.CANCELADA, ReservaStatus.CONCLUIDA);
+        List<Reserva> conflitos = reservaRepository.findConflitosDeReserva(
+                dados.getCategoriaCarroId(),
+                dados.getDataInicio(),
+                dados.getDataFim(),
+                statusIgnorados
+        );
+
+        if (!conflitos.isEmpty()) {
+            throw new IllegalArgumentException("Este veículo já está reservado para o período selecionado.");
+        }
+
+        // 2. Fetch vehicle data (to get price and ensure it exists)
         VeiculoDto veiculo;
         try {
             veiculo = frotaClient.consultarVeiculo(dados.getCategoriaCarroId());
@@ -39,9 +54,8 @@ public class ReservaService {
             throw new IllegalStateException("Erro ao comunicar com o serviço de frota.", e);
         }
 
-        if (!"DISPONIVEL".equalsIgnoreCase(veiculo.getStatus())) {
-            throw new IllegalArgumentException("O veículo solicitado não está disponível no momento (Status: " + veiculo.getStatus() + ").");
-        }
+        // NOTE: We REMOVED the check: if (!"DISPONIVEL".equalsIgnoreCase(veiculo.getStatus()))
+        // This allows booking a car that is currently "ALUGADO" but will be free on the requested dates.
 
         Reserva novaReserva = new Reserva();
         novaReserva.setClienteId(dados.getClienteId());
@@ -61,11 +75,18 @@ public class ReservaService {
 
         Reserva reservaSalva = reservaRepository.save(novaReserva);
 
-        try {
-            veiculo.setStatus("ALUGADO");
-            frotaClient.atualizarVeiculo(veiculo.getId(), veiculo);
-        } catch (Exception e) {
-            throw new IllegalStateException("Erro ao atualizar status do veículo para ALUGADO. Reserva cancelada.", e);
+        // 3. Update status in FrotaService ONLY if the reservation starts effectively NOW (today)
+        // If the reservation is for a future date, we don't change the car's current status yet.
+        boolean comecaHoje = dados.getDataInicio().toLocalDate().isEqual(LocalDateTime.now().toLocalDate());
+
+        if (comecaHoje) {
+            try {
+                veiculo.setStatus("ALUGADO");
+                frotaClient.atualizarVeiculo(veiculo.getId(), veiculo);
+            } catch (Exception e) {
+                // Log warning but don't fail the transaction, as the reservation is valid in our DB
+                System.err.println("Aviso: Não foi possível atualizar status do carro no serviço de frota: " + e.getMessage());
+            }
         }
 
         return reservaSalva;
@@ -86,27 +107,25 @@ public class ReservaService {
     public Reserva atualizarStatus(Long id, ReservaStatus novoStatus) {
         Reserva reserva = buscarPorId(id);
         
-        // Verifica se a operação exige liberar o carro (Cancelamento ou Conclusão)
         boolean deveLiberarCarro = (novoStatus == ReservaStatus.CANCELADA || novoStatus == ReservaStatus.CONCLUIDA);
         
-        // Verifica se o carro já não estava liberado (evita tentar liberar se já estava cancelada/concluída)
         boolean carroEstaPreso = (reserva.getStatus() != ReservaStatus.CANCELADA && reserva.getStatus() != ReservaStatus.CONCLUIDA);
+
+        LocalDateTime agora = LocalDateTime.now();
+        boolean reservaAtiva = (agora.isAfter(reserva.getDataInicio()) || agora.isEqual(reserva.getDataInicio())) 
+                                && agora.isBefore(reserva.getDataFim());
 
         if (deveLiberarCarro && carroEstaPreso) {
             try {
                 VeiculoDto veiculo = frotaClient.consultarVeiculo(reserva.getCategoriaCarroId());
                 
-                // IMPORTANTE: Use a mesma string que você usa no cadastro ("DISPONIVEL" ou "disponível")
                 veiculo.setStatus("DISPONIVEL"); 
                 
                 frotaClient.atualizarVeiculo(veiculo.getId(), veiculo);
                 System.out.println("Veículo liberado com sucesso: ID " + veiculo.getId());
                 
             } catch (Exception e) {
-                // É recomendável lançar erro para sabermos se falhou, 
-                // mas sem impedir a conclusão se o serviço de frota estiver fora do ar (opcional)
                 System.err.println("Erro ao liberar veículo: " + e.getMessage());
-                // throw new IllegalStateException("Não foi possível liberar o veículo na frota.");
             }
         }
 

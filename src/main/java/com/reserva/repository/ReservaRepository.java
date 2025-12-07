@@ -13,5 +13,5 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long> {
 
     List<Reserva> findByStatusAndDataInicioBefore(ReservaStatus status, LocalDateTime dataLimite);
 
-    List<Reserva> findByClienteId(Long clienteId);
+    List<Reserva> findByClienteId(String clienteId);
 }

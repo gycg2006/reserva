@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 public class ReservaRequest {
 
     @NotNull(message = "O ID do cliente não pode ser nulo.")
-    private Long clienteId;
+    private String clienteId;
 
     @NotNull(message = "O ID da categoria do carro não pode ser nulo.")
     private Long categoriaCarroId;

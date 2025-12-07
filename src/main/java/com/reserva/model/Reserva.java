@@ -17,7 +17,7 @@ public class Reserva {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long clienteId;
+    private String clienteId;
     private Long categoriaCarroId;
     private LocalDateTime dataInicio;
     private LocalDateTime dataFim;

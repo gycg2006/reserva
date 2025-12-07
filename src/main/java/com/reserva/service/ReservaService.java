@@ -2,6 +2,7 @@ package com.reserva.service;
 
 import com.reserva.client.FrotaClient;
 import com.reserva.dto.ReservaRequest;
+import com.reserva.dto.VeiculoDto;
 import com.reserva.model.Reserva;
 import com.reserva.model.ReservaStatus;
 import com.reserva.repository.ReservaRepository;
@@ -29,18 +30,17 @@ public class ReservaService {
 
         validarDatas(dados.getDataInicio(), dados.getDataFim());
 
+        VeiculoDto veiculo;
         try {
-            var veiculos = frotaClient.listarVeiculos();
-            
-            boolean isDisponivel = veiculos != null && 
-                    veiculos.stream()
-                            .anyMatch(v -> "disponível".equalsIgnoreCase(v.getStatus()));
-
-            if (!isDisponivel) {
-                throw new IllegalArgumentException("Não há carros disponíveis para esta categoria nestas datas.");
-            }
+            veiculo = frotaClient.consultarVeiculo(dados.getCategoriaCarroId());
+        } catch (feign.FeignException.NotFound e) {
+            throw new IllegalArgumentException("Veículo não encontrado com o ID informado.");
         } catch (feign.FeignException e) {
-            throw new IllegalStateException("Erro ao comunicar com o serviço de frota. Tente novamente mais tarde.", e);
+            throw new IllegalStateException("Erro ao comunicar com o serviço de frota.", e);
+        }
+
+        if (!"disponível".equalsIgnoreCase(veiculo.getStatus())) {
+            throw new IllegalArgumentException("O veículo solicitado não está disponível no momento (Status: " + veiculo.getStatus() + ").");
         }
 
         Reserva novaReserva = new Reserva();
@@ -48,14 +48,27 @@ public class ReservaService {
         novaReserva.setCategoriaCarroId(dados.getCategoriaCarroId());
         novaReserva.setDataInicio(dados.getDataInicio());
         novaReserva.setDataFim(dados.getDataFim());
-
         novaReserva.setStatus(ReservaStatus.PENDENTE);
 
         long dias = ChronoUnit.DAYS.between(dados.getDataInicio(), dados.getDataFim());
-        if (dias == 0) dias = 1; 
-        novaReserva.setValorTotalEstimado(dias * 100.00);
+        if (dias == 0) dias = 1;
+        
+        if (veiculo.getPreco() != null) {
+            novaReserva.setValorTotalEstimado(dias * veiculo.getPreco().doubleValue());
+        } else {
+            novaReserva.setValorTotalEstimado(dias * 100.00);
+        }
 
-        return reservaRepository.save(novaReserva);
+        Reserva reservaSalva = reservaRepository.save(novaReserva);
+
+        try {
+            veiculo.setStatus("ALUGADO");
+            frotaClient.atualizarVeiculo(veiculo.getId(), veiculo);
+        } catch (Exception e) {
+            throw new IllegalStateException("Erro ao atualizar status do veículo para ALUGADO. Reserva cancelada.", e);
+        }
+
+        return reservaSalva;
     }
 
     private void validarDatas(LocalDateTime inicio, LocalDateTime fim) {
@@ -72,6 +85,18 @@ public class ReservaService {
     @Transactional
     public Reserva atualizarStatus(Long id, ReservaStatus novoStatus) {
         Reserva reserva = buscarPorId(id);
+        
+        if ((novoStatus == ReservaStatus.CANCELADA || novoStatus == ReservaStatus.CONCLUIDA) 
+                && reserva.getStatus() != ReservaStatus.CANCELADA) {
+            try {
+                VeiculoDto veiculo = frotaClient.consultarVeiculo(reserva.getCategoriaCarroId());
+                veiculo.setStatus("disponível");
+                frotaClient.atualizarVeiculo(veiculo.getId(), veiculo);
+            } catch (Exception e) {
+                System.err.println("Erro ao liberar veículo no serviço de frota: " + e.getMessage());
+            }
+        }
+
         reserva.setStatus(novoStatus);
         return reservaRepository.save(reserva);
     }

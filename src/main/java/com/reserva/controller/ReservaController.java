@@ -1,11 +1,16 @@
 package com.reserva.controller;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 import com.reserva.dto.ReservaRequest;
 import com.reserva.dto.ReservaResponse;
 import com.reserva.dto.StatusUpdateRequest;
 import com.reserva.model.Reserva;
 import com.reserva.service.ReservaService;
+
 import jakarta.validation.Valid;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

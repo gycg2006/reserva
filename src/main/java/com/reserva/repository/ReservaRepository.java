@@ -4,7 +4,8 @@ import com.reserva.model.Reserva;
 import com.reserva.model.ReservaStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
-
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
 import java.util.List;
 

@@ -32,6 +32,15 @@ public class ReservaController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @GetMapping
+    public ResponseEntity<List<ReservaResponse>> listarReservas() {
+        List<Reserva> reservas = reservaService.listarReservas();
+        List<ReservaResponse> responses = reservas.stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ReservaResponse> buscarReserva(@PathVariable Long id) {
         Reserva reserva = reservaService.buscarPorId(id);

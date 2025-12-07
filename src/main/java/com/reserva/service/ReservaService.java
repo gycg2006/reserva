@@ -100,4 +100,8 @@ public class ReservaService {
         reserva.setStatus(novoStatus);
         return reservaRepository.save(reserva);
     }
+
+    public java.util.List<Reserva> listarReservas() {
+        return reservaRepository.findAll();
+    }
 }
